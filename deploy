@@ -38,16 +38,17 @@ QNET="${QNET:-qnet-static-eth1-dc7e3a}"
 # whatever already answers at that address.
 DNSMASQ_LAN_IP="${DNSMASQ_LAN_IP:?Set DNSMASQ_LAN_IP in .deploy.env — the qnet address for the dnsmasq container}"
 
-# Where dnsmasq forwards everything that isn't *.home.arpa. Defaults to the
-# LAN gateway, which is also this network's own resolver — override only if
-# that ever stops being true.
-UPSTREAM_DNS="${UPSTREAM_DNS:-10.0.0.1}"
+# Where dnsmasq forwards everything that isn't *.home.arpa — normally your
+# LAN gateway, which is also this network's own resolver. Placeholder here,
+# same reasoning as the other defaults in this file: override in .deploy.env.
+UPSTREAM_DNS="${UPSTREAM_DNS:-10.0.0.10}"
 
 # Traefik's own qnet address — the single target every name under
 # HOMELAB_DOMAIN resolves to; Traefik tells apps apart by Host header, not by
 # IP. Not this project's to assign (Traefik predates it), so a default rather
-# than a required var, same reasoning as QNET above.
-TRAEFIK_LAN_IP="${TRAEFIK_LAN_IP:-10.0.0.152}"
+# than a required var, same reasoning as QNET above. Placeholder; override in
+# .deploy.env.
+TRAEFIK_LAN_IP="${TRAEFIK_LAN_IP:-10.0.0.4}"
 
 # The shared internal domain every gated app's hostname lives under, and the
 # cookie's Domain attribute — one place to change it rather than three.
