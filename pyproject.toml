@@ -1,0 +1,65 @@
+[project]
+name = "homelab-auth"
+version = "0.1.0"
+description = "One login for the homelab: a single-admin session-cookie gate for Traefik forwardAuth"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "MIT" }
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    # Small, purpose-built session-cookie/JWT login for a single FastAPI app.
+    # Deliberately not fastapi-users: that package is built for multi-user
+    # registration/OAuth SaaS, which is overkill for one admin account.
+    "fastapi-login>=1.10",
+    "passlib[bcrypt]>=1.7",
+    # Pinned below 4.1: passlib 1.7.4 (the current release) probes bcrypt via
+    # a private `__about__.__version__` attribute that bcrypt 4.1+ removed,
+    # and newer bcrypt also hard-errors on passlib's >72-byte self-test secret
+    # instead of truncating it like older bcrypt did. Both combine to make
+    # every hash/verify call raise. 4.0.x still has both behaviors passlib
+    # expects. Safe to lift once passlib ships a release that supports
+    # bcrypt's current API.
+    "bcrypt>=4.0,<4.1",
+    # Starlette/FastAPI need this to parse the login form body, even though
+    # it's application/x-www-form-urlencoded rather than multipart.
+    "python-multipart>=0.0.12",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",
+    "ruff>=0.8",
+]
+
+[project.scripts]
+homelab-auth = "homelab_auth.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["homelab_auth"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC", "S", "RUF"]
+ignore = [
+    "S101", # assert is fine in tests
+    "B008", # FastAPI Depends() in defaults is idiomatic
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

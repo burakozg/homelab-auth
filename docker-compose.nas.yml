@@ -1,0 +1,97 @@
+# The NAS deployment. Shipped by ./deploy and brought up with
+# `docker compose up -d` over ssh — not a Container Station "Application"; see
+# homelab/README.md for why none of these projects are any more.
+#
+# MAC PINNED, per network. Docker randomises the MAC on every `create` for a
+# macvlan (unlike bridge networks, where it derives one from the IP), and the
+# router then keeps answering for the old one — the container comes back
+# healthy, correctly routed, able to reach the internet, and unreachable inbound
+# for minutes. Pinned at networks.<net>.mac_address rather than on the service,
+# because a service-level mac_address applies to one interface and picks the
+# wrong one the moment there are two.
+#
+# `./deploy render` substitutes the tokens below from .deploy.env and writes the
+# result to the gitignored deploy-out/, so no LAN address and no derived MAC is
+# ever tracked in this file. (nas_render refuses to ship a file where any token
+# survived — which is why this comment does not spell one out.)
+#
+# No bind mount and no named volume: unlike its siblings, this service keeps
+# no state of its own — no database, no config file, nothing written to disk.
+# Every session lives entirely in the signed cookie the browser holds.
+
+name: homelab-auth
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  homelab-auth:
+    image: homelab-auth:0.1.0
+    container_name: homelab-auth
+    restart: unless-stopped
+    logging: *default-logging
+
+    # Nothing is written anywhere outside /tmp — making that provable beats
+    # auditing for it later.
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+
+    # Named homelab-auth.env, NOT .env: a file literally named .env in the
+    # compose project directory is auto-loaded by docker compose itself for
+    # ITS OWN ${...} interpolation, independent of this env_file: directive —
+    # and it mangles values containing "$", like a bcrypt hash ($2b$12$...),
+    # even with no ${AUTH_PASSWORD_HASH} reference anywhere in this file.
+    # Measured: a correct 60-char hash arrived inside the container as 6
+    # characters. Renaming the file sidesteps compose's auto-load entirely;
+    # env_file: values are passed to the container literally either way.
+    env_file:
+      - NAS_APP_DIR_PLACEHOLDER/homelab-auth.env
+
+    environment:
+      TZ: Europe/Stockholm
+
+    # No `ports:` — the container has its own LAN address on the macvlan
+    # below, so a published port would only expose it a second time on the
+    # NAS itself.
+
+    networks:
+      QNET_PLACEHOLDER:
+        ipv4_address: APP_LAN_IP_PLACEHOLDER
+        mac_address: APP_MAC_PLACEHOLDER
+
+  # Local DNS override so a browser resolves every *.home.arpa name to
+  # Traefik — see dnsmasq/dnsmasq.conf for why this exists at all. A
+  # separate container, not folded into homelab-auth itself, because it's a
+  # different failure domain (a DNS outage and an auth-service outage should
+  # never be the same bug) and because it may end up serving other future
+  # *.home.arpa records that have nothing to do with login.
+  dnsmasq:
+    image: 4km3/dnsmasq:2.90-r3
+    container_name: homelab-dnsmasq
+    restart: unless-stopped
+    logging: *default-logging
+    cap_add:
+      - NET_ADMIN
+    read_only: true
+    tmpfs:
+      - /run
+    volumes:
+      - DNSMASQ_CONF_PLACEHOLDER:/etc/dnsmasq.conf:ro
+    mem_limit: 128m
+    networks:
+      QNET_PLACEHOLDER:
+        ipv4_address: DNSMASQ_LAN_IP_PLACEHOLDER
+        mac_address: DNSMASQ_MAC_PLACEHOLDER
+
+networks:
+  # Created and owned by Container Station, not by compose — compose only joins
+  # it, and must not try to define its subnet or parent interface.
+  QNET_PLACEHOLDER:
+    external: true

@@ -1,0 +1,16 @@
+# Real deployment values — hostnames, LAN addresses, paths. Never tracked; see
+# deploy.env.example for the documented set.
+.deploy.env
+# Secrets for the app itself.
+.env
+# Compose rendered with real addresses and MACs, produced by `./deploy render`.
+deploy-out/
+
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+.DS_Store
