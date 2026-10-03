@@ -159,10 +159,12 @@ valid." As deployed:
 
 | app | what's gated | what stays open |
 |---|---|---|
-| shortlist | everything (`Host` only, no path split) | — |
-| podcast-digest | everything, including `/admin` (`Host` only) | — |
+| shortlist | everything except `/healthz` (`Host`, with a higher-priority exact `Path` rule for the probe) | `/healthz` — the status collector and deploy probes use it |
+| podcast-digest | everything, including `/admin` (`Host`) | `/healthz` only (exact `Path`) — liveness for the status collector and deploy probes. The status job reads the richer `/api/v1/*` endpoints in-network, bypassing the gate |
 | vault-ask | `/admin*` (`PathPrefix`) | `/chat`, `/query`, `/v1/*` — by design, no login for the daily-use chat surface |
 | security-digest, news-digest | `/admin*` and `/run` (`PathPrefix` + exact `Path`) | `/status` — read by the homelab status collector and this fleet's own deploy health-probes |
+| taster-admin | everything except `/healthz` (`Host`, plus an exact `Path` carve-out for the probe) | `/healthz` |
+| governance | everything (`Host` only) — the status, architecture and models pages | — |
 | family_calendar | `admin.html` only, and only when reached via its `family-calendar.servers.zou` route specifically (`Host` + exact `Path`, plus an app-level check in its own `main.py` — see below) | everything else: `mobile.html`, `display.html`, `recipes.html`, and the API they share |
 
 **family_calendar is the one real exception to "Traefik decides everything,"**
@@ -178,9 +180,10 @@ serve `admin.html` at all unless the Host header is exactly this service's
 gated hostname. Every other route, including the ones the Inky Frame and the
 family's own phones use, is unaffected.
 
-`taster` (its relay's PWA uses one bearer key for both daily capture and
-admin, with no clean split) and `video-digest`/`clippings-topics` (no browser
-admin surface at all) were deliberately left out of this project — see the
+`taster`'s relay PWA (one bearer key for both daily capture and admin, with no
+clean split) and `video-digest`/`clippings-topics` (no browser admin surface at
+all) were deliberately left out of this project. (taster's separate *admin
+console*, `taster-admin`, is gated — see the table.) — see the
 per-project audit that scoped it, not repeated here.
 
 ## Endpoints
